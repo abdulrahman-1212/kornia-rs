@@ -57,7 +57,8 @@ fn save_colorized(width: usize, height: usize, data: &[f32], path: &str) {
         };
         out.put_pixel(x, y, Rgb(px));
     }
-    out.save(path).unwrap_or_else(|e| panic!("failed to save {path}: {e}"));
+    out.save(path)
+        .unwrap_or_else(|e| panic!("failed to save {path}: {e}"));
     println!("wrote {path}  (range [{lo:.2}, {hi:.2}])");
 }
 
@@ -84,8 +85,8 @@ fn main() {
         max_disparity: 128,
         p1: 10,
         p2: 120,
-        census_radius: 2,
-        lr_max_diff: 2,
+        census_radius: 7,
+        lr_max_diff: 1,
     };
 
     println!("running SGM (use --release, debug builds are very slow)...");

@@ -4,4 +4,4 @@ mod rectify;
 pub use rectify::{CameraCalib, StereoError, StereoRectifier};
 
 pub mod sgm;
-pub use sgm::{StereoMatcher, DisparityMap, MatcherError};
+pub use sgm::{DisparityMap, MatcherError, StereoMatcher};

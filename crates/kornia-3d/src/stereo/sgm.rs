@@ -129,7 +129,7 @@ impl Default for StereoMatcher {
             max_disparity: 64,
             p1: 10,
             p2: 120,
-            census_radius: 2, // 5×5 window
+            census_radius: 3, // 5×5 window
             lr_max_diff: 1,
         }
     }
@@ -214,7 +214,11 @@ impl StereoMatcher {
         // 6. LR consistency check.
         let data = lr_check(&disp_left, &disp_right, w, h, self.lr_max_diff);
 
-        Ok(DisparityMap { width: w, height: h, data })
+        Ok(DisparityMap {
+            width: w,
+            height: h,
+            data,
+        })
     }
 }
 
@@ -264,13 +268,7 @@ fn census_transform(src: &[u8], w: usize, h: usize, r: usize) -> Vec<u64> {
 /// `C[v, u, d] = hamming(left_census[v,u], right_census[v, u-d])`.
 /// Right pixels out of bounds default to cost 64 (maximum Hamming distance
 /// for a 64-bit descriptor), which penalises invalid matches.
-fn build_cost_volume(
-    left: &[u64],
-    right: &[u64],
-    w: usize,
-    h: usize,
-    max_d: usize,
-) -> Vec<u16> {
+fn build_cost_volume(left: &[u64], right: &[u64], w: usize, h: usize, max_d: usize) -> Vec<u16> {
     let mut vol = vec![u16::MAX; h * w * max_d];
     for v in 0..h {
         let row = v * w;
@@ -317,32 +315,25 @@ fn build_cost_volume_right(
 
 /// The eight cardinal + diagonal scan directions.
 ///
-/// Each entry is `(du, dv)` — the step taken when *scanning forward* along
+/// Each entry is `(du, dv)` - the step taken when *scanning forward* along
 /// the path. We process each direction independently in a single pass and
 /// accumulate.
 const DIRECTIONS: [(isize, isize); 8] = [
-    (1, 0),   // 
-    (-1, 0),  // 
-    (0, 1),   // 
-    (0, -1),  // 
-    (1, 1),   // 
-    (-1, -1), // 
-    (1, -1),  // 
-    (-1, 1),  // 
+    (1, 0),   //
+    (-1, 0),  //
+    (0, 1),   //
+    (0, -1),  //
+    (1, 1),   //
+    (-1, -1), //
+    (1, -1),  //
+    (-1, 1),  //
 ];
 
 /// Aggregates the cost volume along all 8 directions using the SGM recurrence.
 ///
 /// The output volume has the same layout as the input but holds aggregated
 /// `u16` costs (saturating arithmetic prevents overflow).
-fn sgm_aggregate(
-    cost: &[u16],
-    w: usize,
-    h: usize,
-    max_d: usize,
-    p1: u16,
-    p2: u16,
-) -> Vec<u32> {
+fn sgm_aggregate(cost: &[u16], w: usize, h: usize, max_d: usize, p1: u16, p2: u16) -> Vec<u32> {
     let n = h * w * max_d;
     let mut agg = vec![0u32; n];
 
@@ -354,7 +345,17 @@ fn sgm_aggregate(
 
     for &(du, dv) in &DIRECTIONS {
         aggregate_direction(
-            cost, &mut agg, &mut prev_row, &mut cur_row, w, h, max_d, du, dv, p1, p2,
+            cost,
+            &mut agg,
+            &mut prev_row,
+            &mut cur_row,
+            w,
+            h,
+            max_d,
+            du,
+            dv,
+            p1,
+            p2,
         );
     }
 
@@ -367,13 +368,14 @@ fn sgm_aggregate(
 /// ```text
 /// Lr(p, d) = C(p, d)
 ///          + min(Lr(p-r, d),
-///                Lr(p-r, d±1) + P1,
+///                Lr(p-r, d+1) + P1,
 ///                min_k Lr(p-r, k) + P2)
 ///          - min_k Lr(p-r, k)
 /// ```
 /// `prev_row` / `cur_row` are scratch buffers of length `max_d`, reused (and
 /// swapped) across every scanline and every pixel to avoid per-step
 /// allocation.
+#[allow(clippy::too_many_arguments)]
 fn aggregate_direction(
     cost: &[u16],
     agg: &mut [u32],
@@ -404,9 +406,7 @@ fn aggregate_direction(
 
             if is_first {
                 // First pixel on the path: cost only.
-                for d in 0..max_d {
-                    cur_row[d] = cur_cost[d];
-                }
+                cur_row.copy_from_slice(cur_cost);
                 is_first = false;
             } else {
                 let min_prev = prev_row.iter().copied().min().unwrap_or(u16::MAX);
@@ -495,7 +495,7 @@ fn wta_subpixel(agg: &[u32], w: usize, h: usize, max_d: usize) -> Vec<f32> {
             // WTA.
             let (d_best, &c_best) = match slice.iter().enumerate().min_by_key(|&(_, &c)| c) {
                 Some(val) => val,
-                None => continue, 
+                None => continue,
             };
 
             // Threshold for invalid pixels. Max Hamming distance for 24-bit census is 24.
@@ -535,13 +535,7 @@ fn wta_subpixel(agg: &[u32], w: usize, h: usize, max_d: usize) -> Vec<f32> {
 /// At each left pixel `(u, v)` with disparity `dL`, the corresponding right
 /// pixel is `(u - round(dL), v)`.  If its right disparity `dR` satisfies
 /// `|dL - dR| > threshold`, the left pixel is set to `NaN`.
-fn lr_check(
-    disp_l: &[f32],
-    disp_r: &[f32],
-    w: usize,
-    h: usize,
-    threshold: usize,
-) -> Vec<f32> {
+fn lr_check(disp_l: &[f32], disp_r: &[f32], w: usize, h: usize, threshold: usize) -> Vec<f32> {
     let thr = threshold as f32;
     let mut out = disp_l.to_vec();
     for v in 0..h {
@@ -623,7 +617,7 @@ mod tests {
     fn horizontal_shift_recovers_disparity() {
         let (w, h) = (128usize, 64usize);
         let shift = 8usize; // known disparity
-        // Textured left image: vertical stripes of different intensities.
+                            // Textured left image: vertical stripes of different intensities.
         let left_data: Vec<u8> = (0..w * h)
             .map(|i| {
                 let u = i % w;
@@ -656,7 +650,7 @@ mod tests {
             max_disparity: 32,
             p1: 8,
             p2: 64,
-            census_radius: 2,
+            census_radius: 3,
             lr_max_diff: 2,
         };
 
