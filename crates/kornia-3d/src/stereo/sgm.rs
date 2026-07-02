@@ -5,16 +5,16 @@
 //!
 //! ## Pipeline
 //!
-//! 1. **Census transform** — 5×5 bit-string descriptor around each pixel;
+//! 1. **Census transform** - 5x5 bit-string descriptor around each pixel;
 //!    robust to gain/bias differences between the two views.
-//! 2. **Matching cost volume** — Hamming distance between left and
-//!    right census strings for each `(u, v, d)` triplet, `d ∈ [0, max_disp)`.
-//! 3. **SGM aggregation** — path costs summed over 8 directions with the
+//! 2. **Matching cost volume** - Hamming distance between left and
+//!    right census strings for each `(u, v, d)` triplet, `d belongs to [0, max_disp)`.
+//! 3. **SGM aggregation** - path costs summed over 8 directions with the
 //!    standard smoothness penalties P1 (small steps) and P2 (large steps).
-//! 4. **Winner-takes-all (WTA)** — per-pixel minimum of the aggregated cost.
-//! 5. **Sub-pixel refinement** — parabolic fit over the three costs around
+//! 4. **Winner-takes-all (WTA)** - per-pixel minimum of the aggregated cost.
+//! 5. **Sub-pixel refinement** - parabolic fit over the three costs around
 //!    the WTA minimum; improves accuracy to ~0.5 px.
-//! 6. **Left-right consistency check** — pixels whose left and right WTA
+//! 6. **Left-right consistency check** - pixels whose left and right WTA
 //!    minima disagree by more than `lr_max_diff` are marked invalid (`NaN`).
 //!
 //! Mirrors the structure of OpenCV's `StereoSGBM`, but written from scratch
@@ -86,7 +86,7 @@ impl DisparityMap {
 ///
 /// # Defaults
 ///
-/// The defaults are a reasonable starting point for a 640×480 stereo pair
+/// The defaults are a reasonable starting point for a 640x480 stereo pair
 /// with a ~0.1 m baseline and scenes up to ~5 m:
 ///
 /// ```
@@ -98,22 +98,22 @@ pub struct StereoMatcher {
     /// Maximum disparity (exclusive). Must be > 0.
     ///
     /// A scene depth of `d_min` metres requires at least `bf / d_min` pixels
-    /// of disparity range.  For EuRoC at 480p with bf ≈ 50 px·m, 64 covers
+    /// of disparity range.  For EuRoC at 480p with bf = 50 px.m, 64 covers
     /// depths down to ~0.8 m.
     pub max_disparity: usize,
     /// Penalty for a disparity change of exactly 1 px between neighbours.
     ///
-    /// Larger → smoother disparity transitions; typical range 5–20.
+    /// Larger: smoother disparity transitions; typical range 5-20.
     pub p1: u16,
     /// Penalty for a disparity change > 1 px between neighbours.
     ///
-    /// Must be > `p1`; typical range 50–150.  A ratio `p2 / p1 ≈ 8` works
+    /// Must be > `p1`; typical range 50-150.  A ratio `p2 / p1 = 8` works
     /// well for most scenes.
     pub p2: u16,
     /// Half-size of the Census transform window.
     ///
-    /// The full window is `(2*r+1) × (2*r+1)`.  `r=2` (5×5) fits in a
-    /// `u32` and handles most textures; increase to 3 (7×7, needs `u64`)
+    /// The full window is `(2*r+1) x (2*r+1)`.  `r=2` (5x5) fits in a
+    /// `u32` and handles most textures; increase to 3 (7x7, needs `u64`)
     /// only if you observe matching errors on smooth surfaces.
     pub census_radius: usize,
     /// Left-right consistency threshold in pixels.
@@ -129,7 +129,7 @@ impl Default for StereoMatcher {
             max_disparity: 64,
             p1: 10,
             p2: 120,
-            census_radius: 3, // 5×5 window
+            census_radius: 3, // 5x5 window
             lr_max_diff: 1,
         }
     }
@@ -166,7 +166,7 @@ impl StereoMatcher {
     /// Computes a dense disparity map from a rectified stereo pair.
     ///
     /// `left` and `right` must be the outputs of [`StereoRectifier::rectify_left`]
-    /// and [`StereoRectifier::rectify_right`] respectively — i.e. grayscale,
+    /// and [`StereoRectifier::rectify_right`] respectively - i.e. grayscale,
     /// same size, epipolar lines horizontal.
     ///
     /// Returns a [`DisparityMap`] with sub-pixel precision.  Invalid pixels
@@ -226,11 +226,11 @@ impl StereoMatcher {
 // Census transform
 // ---------------------------------------------------------------------------
 
-/// Computes a Census bit-string for every pixel using a `(2r+1)×(2r+1)` window.
+/// Computes a Census bit-string for every pixel using a `(2r+1)x(2r+1)` window.
 ///
-/// Pixel at `(u, v)` is compared against its `(2r+1)²-1` neighbours; each
+/// Pixel at `(u, v)` is compared against its `(2r+1)^2-1` neighbours; each
 /// comparison contributes one bit (1 if neighbour < centre).  The result is
-/// packed into a `u64`; for `r=2` (5×5 = 24 bits) this fits comfortably.
+/// packed into a `u64`; for `r=2` (5x5 = 24 bits) this fits comfortably.
 /// Pixels within `r` of the border receive a value of `0`.
 fn census_transform(src: &[u8], w: usize, h: usize, r: usize) -> Vec<u64> {
     let mut out = vec![0u64; w * h];
@@ -368,7 +368,7 @@ fn sgm_aggregate(cost: &[u16], w: usize, h: usize, max_d: usize, p1: u16, p2: u1
 /// ```text
 /// Lr(p, d) = C(p, d)
 ///          + min(Lr(p-r, d),
-///                Lr(p-r, d+1) + P1,
+///                Lr(p-r, d+-1) + P1,
 ///                min_k Lr(p-r, k) + P2)
 ///          - min_k Lr(p-r, k)
 /// ```

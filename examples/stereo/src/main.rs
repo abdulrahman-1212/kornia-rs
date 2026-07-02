@@ -29,7 +29,7 @@ fn load_grayscale(path: &str) -> Image<u8, 1> {
     .expect("image size mismatch")
 }
 
-/// Simple blue → green → yellow → red ramp (turbo-ish) for `t ∈ [0, 1]`.
+/// Simple blue -> green -> yellow -> red ramp (turbo-ish) for `t in [0, 1]`.
 fn colormap(t: f32) -> [u8; 3] {
     let t = t.clamp(0.0, 1.0);
     let r = (255.0 * (1.5 - (4.0 * t - 3.0).abs()).clamp(0.0, 1.0)) as u8;
