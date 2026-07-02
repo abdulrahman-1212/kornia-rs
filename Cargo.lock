@@ -15826,6 +15826,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "stereo"
+version = "0.1.14"
+dependencies = [
+ "image",
+ "kornia-3d",
+ "kornia-image",
+]
+
+[[package]]
 name = "stl_io"
 version = "0.8.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"

@@ -1,5 +1,7 @@
 //! Stereo geometry: rectification of non-row-aligned camera pairs.
 
 mod rectify;
-
 pub use rectify::{CameraCalib, StereoError, StereoRectifier};
+
+pub mod sgm;
+pub use sgm::{StereoMatcher, DisparityMap, MatcherError};

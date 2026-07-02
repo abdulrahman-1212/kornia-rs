@@ -1,0 +1,12 @@
+[package]
+name = "stereo"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+ 
+[dependencies]
+kornia-3d = { path = "../../crates/kornia-3d" }
+kornia-image = { path = "../../crates/kornia-image" }
+image = "0.25"
